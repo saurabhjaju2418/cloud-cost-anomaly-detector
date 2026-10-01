@@ -1,44 +1,54 @@
 <div align="center">
 
-<img src="assets/project-banner.svg" alt="Animated Aperture — Cloud Cost Signals banner" width="900" />
+<img src="assets/project-banner.svg" alt="Animated cloud cost anomaly dashboard" width="900" />
 
-# Aperture — Cloud Cost Signals
+# Cloud Cost Anomaly Detector
 
-**Find the spend change. Understand what moved.**
+**Find spend changes early, with a baseline you can explain.**
 
-Java · Spring Boot · PostgreSQL · Cloud billing exports
-
-![Project status](https://img.shields.io/badge/status-in%20progress-7a8b71)
+Java 21 · Spring Boot · PostgreSQL · Flyway · Docker
 
 </div>
 
-## Product scope
+An API for daily cloud spend ingestion and explainable anomaly detection. It compares each service/account/region daily amount to the preceding fourteen calendar days in the same currency.
 
-Load billing data, detect changes against seasonal baselines, and show likely cost drivers with supporting records.
+## Implemented
 
-## Architecture notes
+- POST /api/cost-records validates daily spend records and upserts the provider/account/service/region/date key.
+- The detector needs at least seven prior daily observations, computes their arithmetic mean, and flags spend only when the increase is both greater than 50% and at least 25 currency units.
+- GET /api/anomalies returns the most recently detected anomalies with actual, baseline, absolute delta, and ratio.
+- PostgreSQL schema, Flyway migration, health/metrics endpoints, and Docker Compose.
 
-Replayable ingestion; idempotent daily partitions; robust configurable baselines; explainable anomaly records; least-privilege cloud access.
+This simple baseline is intentionally visible and deterministic. It is a portfolio MVP, not a replacement for each cloud provider's billing semantics or a seasonality-aware forecasting system.
 
-### Data model sketch
+## Run
 
-    cost_records(day, provider, account_id, service, region, amount) · baselines(key, window, expected, variance) · alerts(id, key, observed, expected, status)
+Requirements: Docker Compose.
 
-## Stack
+```bash
+docker compose up --build
+```
 
-Java · Spring Boot · PostgreSQL · Cloud billing exports
+Example record:
 
-## Build sequence
+```bash
+curl -X POST http://localhost:8080/api/cost-records \
+  -H 'Content-Type: application/json' \
+  -d '{"provider":"aws","accountId":"demo-account","service":"compute","region":"eu-west-1","usageDate":"2026-10-01","amount":184.25,"currency":"USD","sourceRef":"demo-export-2026-10-01"}'
+```
 
-1. Billing import and normalized schema
-2. Baseline and anomaly detector
-3. Driver breakdown and alert lifecycle
-4. Scheduling, replay, and observability
+## Detection flow
 
-## Current status
+```text
+daily cost record -> normalized dimensions -> 14-day history -> explainable baseline
+                                                          -> threshold decision -> anomaly record
+```
 
-Public repository with an animated README. Product code is being built incrementally, one project at a time. This page records the planned product boundary and engineering milestones.
+## Known boundaries
+
+The current API accepts already-normalized spend; cloud provider credential ingestion, currency conversion, budgets, notifications, multi-tenant authorization, and seasonal models are not implemented. Currency is compared only within the same currency code. A production ingest adapter should verify provider report completeness and support idempotent batch imports.
 
 ## License
 
-MIT.
+MIT. See LICENSE.
+
