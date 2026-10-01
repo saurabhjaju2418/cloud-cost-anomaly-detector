@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: cost-anomaly-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/cloudcost}
+    username: ${DATABASE_USER:cloudcost}
+    password: ${DATABASE_PASSWORD:cloudcost}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+server:
+  port: ${PORT:8080}
+
